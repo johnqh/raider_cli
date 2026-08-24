@@ -80,6 +80,10 @@ export async function captureApp(options: CaptureOptions): Promise<Uint8Array> {
   const pending = new Map<string, Record<string, unknown>>();
   const inFlight: Array<Promise<void>> = [];
 
+  // The harness fetches source maps through the page after browsing finishes.
+  // Those are instrumentation, not application behaviour, and must not appear
+  // in the capture — otherwise they are indistinguishable from real API calls.
+  let recording = true;
   let navigationCounter = 0;
   let currentNavigationId: string | null = null;
   const navigations: Array<{ navigationId: string; path: string }> = [];
@@ -96,6 +100,7 @@ export async function captureApp(options: CaptureOptions): Promise<Uint8Array> {
     const entry = pending.get(p.requestId);
     if (!entry) return;
     pending.delete(p.requestId);
+    if (!recording) return;
     const navigationId = currentNavigationId;
 
     inFlight.push(
@@ -208,6 +213,7 @@ export async function captureApp(options: CaptureOptions): Promise<Uint8Array> {
   await Promise.all(inFlight);
 
   // Fetch source maps with the page's own credentials.
+  recording = false;
   for (const row of rows) {
     if (!row.mimeType?.includes('javascript')) continue;
     if (sourceMaps[row.url]) continue;
