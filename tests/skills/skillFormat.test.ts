@@ -126,3 +126,14 @@ test('the skill does not depend on tools that may not be installed', async () =>
   const text = await Bun.file(SKILL).text();
   expect(text).not.toMatch(/\$\(jq |\| ?jq |^jq /m);
 });
+
+test('installation documents the CLI install command for each runtime', async () => {
+  const text = await Bun.file(INSTALL).text();
+  for (const cmd of [
+    'xray install --claude',
+    'xray install --codex',
+    'xray install --agents',
+  ]) {
+    expect(text).toContain(cmd);
+  }
+});
