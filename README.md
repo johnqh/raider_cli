@@ -1,18 +1,51 @@
 # xray_cli
 
-Command-line reconstruction for [xray](../xray_lib) capture bundles, plus the
-Claude Code `reconstruct` skill that drives it.
+Reconstruct a working web app from an **xray** capture bundle — plus the agent
+skill that drives the reconstruction.
 
-**Status: not yet implemented.** This repository exists to hold the boundary.
-Its contents arrive with milestones 5–8 of the xray design, which are
-deliberately deferred until there are real captured bundles to build against.
+```bash
+bun add -g @sudobility/xray_cli
+```
+
+Requires [Bun](https://bun.sh) ≥ 1.2. The CLI ships as TypeScript and runs
+under Bun directly.
+
+## Usage
+
+```bash
+xray reconstruct <bundle.zip|dir> --out <dir>
+xray install [--claude] [--codex] [--agents] [--all]
+xray uninstall [--claude] [--codex] [--agents]
+```
+
+`xray install` symlinks the `reconstruct` skill into the personal skills
+directory of a coding agent — `.claude/skills`, `.codex/skills`, or the shared
+`.agents/skills` path. The skill itself is runtime-agnostic: it drives a shell
+binary and reads JSON, so it works the same in Claude Code, Codex, Gemini CLI,
+and Copilot CLI.
+
+## The split: CLI does the deterministic work, the agent does the judgment
+
+`xray reconstruct` performs every stage that has a right answer — source-map
+recovery, bundle unpacking, JSON Schema inference, API and route modelling,
+project scaffold, and a [Hono](https://hono.dev) replay server that serves the
+captured traffic back. Each stage writes a JSON artifact to disk.
+
+The `reconstruct` skill reads those artifacts and does only the work that needs
+judgment: implementing components, naming things, wiring routes. Its governing
+rule is that **the bundle is evidence, not inspiration** — everything written
+must trace to something captured, and where the bundle is silent it says so.
+
+That boundary is what keeps the system testable. Everything the CLI does is
+covered by `bun test`; only genuinely model-shaped work lives in prose.
 
 ## Why this is a separate repository
 
-`xray_lib` is imported by `xray_extension`, which ships into a Chrome MV3
-bundle. Its defining constraint is that it performs no I/O — no filesystem, no
-`DOM` in its tsconfig `lib` — which is what keeps it trivially testable and
-safe to bundle for the browser.
+[`xray_lib`](https://github.com/johnqh/xray_lib) is imported by
+[`xray_extension`](https://github.com/johnqh/xray_extension), which ships into
+a Chrome MV3 bundle. Its defining constraint is that it performs no I/O — no
+filesystem, no `DOM` in its tsconfig `lib` — which is what keeps it trivially
+testable and safe to bundle for the browser.
 
 A CLI is the opposite: it needs `fs`, `path`, `process`, and zip extraction.
 Putting that in `xray_lib` would place Node-only code in the dependency graph
@@ -28,26 +61,25 @@ xray_lib              pure: bundle format, redaction, coverage, inference
 
 The two consumers never see each other.
 
-## Planned surface
+## Development
 
 ```bash
-xray reconstruct <bundle.zip|dir> --out <dir>
+bun install
+bun run typecheck
+bun test
+bun run fixtures:build      # build the sample apps
+bun run fixtures:capture    # capture them into fixtures/bundles/
 ```
 
-The CLI owns the deterministic stages of the design — source-map recovery,
-bundle unpacking, JSON Schema inference, route modelling, project scaffold, and
-the Hono replay server — writing intermediate JSON artifacts to disk at each
-stage. The `reconstruct` skill reads those artifacts and does only the work
-that needs judgment: implementing components, naming things, wiring routes.
+## The xray project
 
-That split is what keeps the system testable. Everything the CLI does is
-covered by `bun test`; only genuinely model-shaped work lives in prose.
-
-## Related
-
-- [`xray_lib`](../xray_lib) — bundle format and pure analysis; design spec and plans live in `docs/superpowers/`
-- [`xray_extension`](../xray_extension) — the capture extension
+| Repository | Role |
+|---|---|
+| [`xray_lib`](https://github.com/johnqh/xray_lib) | Bundle format and pure analysis |
+| [`xray_extension`](https://github.com/johnqh/xray_extension) | Chrome MV3 extension that performs the capture |
+| [`xray_cli`](https://github.com/johnqh/xray_cli) | Reconstruction CLI and the agent skill — this repo |
+| [`xray_web`](https://github.com/johnqh/xray_web) | Landing site |
 
 ## License
 
-BUSL-1.1
+BUSL-1.1 — see [LICENSE.md](LICENSE.md).
