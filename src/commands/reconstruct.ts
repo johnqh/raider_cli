@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   buildApiModel,
   buildRouteModel,
+  deriveTimeline,
   endpointKey,
   generateClient,
   generateProject,
@@ -16,11 +17,14 @@ import {
 } from '@sudobility/xray_lib';
 import { loadBundle } from '../bundle/load';
 import { unpackChunks } from '../stages/unpack';
+import { emitMirror } from '../stages/mirror';
 import { emitFiles } from '../emit';
 
 export interface ReconstructReport {
   recoveryRatio: number;
-  mode: 'recovery' | 'inference';
+  mode: 'recovery' | 'inference' | 'mirror';
+  mirroredFiles: number;
+  pages: number;
   routes: number;
   endpoints: number;
   gaps: number;
@@ -83,19 +87,12 @@ export async function reconstruct(options: {
   }
 
   const ratio = recoveryRatio({ mappedBytes, totalBytes: totalJsBytes });
-  const mode: 'recovery' | 'inference' =
-    ratio >= RECOVERY_THRESHOLD ? 'recovery' : 'inference';
-  await writeJson('02-recovery.json', {
-    ratio,
-    mode,
-    files: Object.keys(recovered).sort(),
-  });
   if (Object.keys(recovered).length > 0) {
     await emitFiles(join(xrayDir, '02-sources'), recovered);
   }
 
-  // Stage 3 — unpack only when recovery did not carry the day.
-  if (mode === 'inference') {
+  // Stage 3 — unpack whenever source maps did not carry the day.
+  if (ratio < RECOVERY_THRESHOLD) {
     const chunks = await unpackChunks(bundle);
     const files: Record<string, string> = {};
     chunks.forEach((chunk, index) => {
@@ -145,19 +142,52 @@ export async function reconstruct(options: {
   await writeJson('recordings.json', recordings);
 
   // Stage 5 — route model.
-  const navigations =
+  //
+  // A client-side router hands us its route table, and the extension stamps a
+  // navigationId per row. Neither exists for a server-rendered or multi-page
+  // site. When they are missing, recover both from the request timeline: every
+  // Document request is a navigation, and what follows it belongs to that page.
+  const runtimeRoutes = (bundle.runtime.routes as string[]) ?? [];
+  const runtimeNavigations =
     (bundle.runtime.navigations as Array<{ navigationId: string; path: string }>) ?? [];
+
+  const derived = deriveTimeline(bundle.requests);
+  const usingDerived = runtimeRoutes.length === 0 || runtimeNavigations.length === 0;
+
   const routeModel = buildRouteModel({
-    routes: (bundle.runtime.routes as string[]) ?? [],
-    navigations,
+    routes: usingDerived ? derived.navigations.map((n) => n.path) : runtimeRoutes,
+    navigations: usingDerived ? derived.navigations : runtimeNavigations,
     requests: bundle.requests.map((r) => ({
       method: r.method,
       url: r.url,
-      navigationId: r.navigationId,
+      navigationId: usingDerived ? (derived.assignments[r.id] ?? null) : r.navigationId,
       resourceType: r.resourceType,
     })),
   });
-  await writeJson('05-route-model.json', routeModel);
+  await writeJson('05-route-model.json', {
+    ...routeModel,
+    source: usingDerived ? 'derived-from-documents' : 'runtime-router-table',
+  });
+
+  // Stage 5b — the mirror. Always written: these are the served bytes, with no
+  // inference involved at all.
+  const mirror = await emitMirror(bundle, join(options.outDir, 'public'));
+  await writeJson('06-mirror.json', mirror);
+
+  // With no source maps and no client router, there is no component tree to
+  // reconstruct — the components ran on the server and were never sent. The
+  // honest artifact is the mirror plus a replay server, not a fabricated SPA.
+  const mode: ReconstructReport['mode'] =
+    ratio >= RECOVERY_THRESHOLD
+      ? 'recovery'
+      : runtimeRoutes.length === 0 && mirror.pages.length > 0
+        ? 'mirror'
+        : 'inference';
+  await writeJson('02-recovery.json', {
+    ratio,
+    mode,
+    files: Object.keys(recovered).sort(),
+  });
 
   // Stages 6–7 — stack decision and deterministic codegen.
   const stack: StackFingerprint = bundle.manifest.stack ?? {
@@ -169,16 +199,21 @@ export async function reconstruct(options: {
     bundler: 'unknown',
   };
 
-  const project = generateProject({
-    name: 'rebuilt',
-    stack,
-    routes: routeModel.routes,
-    api,
-    gaps: bundle.gaps,
-  });
+  const project: Record<string, string> =
+    mode === 'mirror'
+      ? mirrorProject({ origin: bundle.manifest.origin, stack, mirror, gaps: bundle.gaps })
+      : generateProject({
+          name: 'rebuilt',
+          stack,
+          routes: routeModel.routes,
+          api,
+          gaps: bundle.gaps,
+        });
+
   project['src/api/types.ts'] = generateTypes(api);
   project['src/api/client.ts'] = generateClient(api);
-  project['server/replay.ts'] = generateReplayServer(api);
+  project['server/replay.ts'] =
+    mode === 'mirror' ? mirrorServer(api) : generateReplayServer(api);
   project['server/recordings.json'] = JSON.stringify(recordings, null, 2);
 
   const filesWritten = await emitFiles(options.outDir, project);
@@ -186,6 +221,8 @@ export async function reconstruct(options: {
   const report: ReconstructReport = {
     recoveryRatio: ratio,
     mode,
+    mirroredFiles: mirror.filesWritten,
+    pages: mirror.pages.length,
     routes: routeModel.routes.length,
     endpoints: api.endpoints.length,
     gaps: bundle.gaps.length,
@@ -201,6 +238,8 @@ export async function reconstruct(options: {
       `- Framework: ${stack.framework} ${stack.frameworkVersion ?? '(version unknown)'}`,
       `- Bundler: ${stack.bundler}`,
       `- Mode: **${mode}** (source-map recovery ${ratio}%)`,
+      `- Mirrored: ${mirror.filesWritten} files, ${(mirror.bytes / 1048576).toFixed(1)} MB, ${mirror.pages.length} pages`,
+      `- Route source: ${usingDerived ? 'derived from Document requests' : 'runtime router table'}`,
       `- Routes: ${routeModel.routes.length} (${routeModel.routes.filter((r) => !r.visited).length} never visited)`,
       `- Endpoints: ${api.endpoints.length}`,
       `- Gaps: ${bundle.gaps.length}`,
@@ -214,6 +253,10 @@ export async function reconstruct(options: {
           }`
       ),
       '',
+      '## Pages',
+      '',
+      ...(mirror.pages.length > 0 ? mirror.pages.map((p) => `- \`${p}\``) : ['(none)']),
+      '',
       '## Unattributed endpoints',
       '',
       ...(routeModel.unattributed.length > 0
@@ -224,6 +267,101 @@ export async function reconstruct(options: {
   );
 
   return report;
+}
+
+function mirrorProject(input: {
+  origin: string;
+  stack: StackFingerprint;
+  mirror: { filesWritten: number; pages: string[]; bytes: number };
+  gaps: Array<{ reason: string; url: string; detail: string | null }>;
+}): Record<string, string> {
+  const files: Record<string, string> = {};
+
+  files['package.json'] = JSON.stringify(
+    {
+      name: 'mirror',
+      private: true,
+      type: 'module',
+      scripts: { serve: 'bun run server/replay.ts' },
+      dependencies: { hono: '^4.6.0' },
+    },
+    null,
+    2
+  );
+
+  files['README.md'] = [
+    `# ${new URL(input.origin).host} — reconstruction`,
+    '',
+    `Rebuilt by xray from a capture of ${input.origin}.`,
+    '',
+    '## What this is',
+    '',
+    `The site was rendered on the server and shipped no source maps, so its`,
+    `component source never reached the browser and cannot be recovered. What`,
+    `*was* received is here in full: ${input.mirror.filesWritten} files`,
+    `(${(input.mirror.bytes / 1048576).toFixed(1)} MB) across ${input.mirror.pages.length} pages,`,
+    'byte-identical to what the server sent.',
+    '',
+    `Detected stack: ${input.stack.framework}${input.stack.frameworkVersion ? ` ${input.stack.frameworkVersion}` : ''}`,
+    input.stack.stateLibraries.length > 0
+      ? `State libraries: ${input.stack.stateLibraries.join(', ')}`
+      : '',
+    '',
+    '## Run it',
+    '',
+    '```bash',
+    'bun install',
+    'bun run serve   # http://localhost:8787',
+    '```',
+    '',
+    'Static files are served from `public/`. API calls are replayed from',
+    '`server/recordings.json`; anything never captured returns 501 rather than',
+    'a plausible invention.',
+    '',
+    '## What is not here',
+    '',
+    '- Server component source — it ran on the server and was never sent.',
+    '- Any behaviour behind an endpoint the capture did not exercise.',
+    input.gaps.length > 0 ? `- ${input.gaps.length} resources listed in XRAY-GAPS.md.` : '',
+    '',
+    '## Pages',
+    '',
+    ...input.mirror.pages.map((p) => `- \`${p}\``),
+    '',
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+
+  if (input.gaps.length > 0) {
+    files['XRAY-GAPS.md'] = [
+      '# Capture gaps',
+      '',
+      'Requested by the site but not captured. Anything depending on these is',
+      'missing evidence, not merely unimplemented.',
+      '',
+      ...input.gaps.map(
+        (gap) => `- \`${gap.reason}\` — ${gap.url}${gap.detail ? ` (${gap.detail})` : ''}`
+      ),
+      '',
+    ].join('\n');
+  }
+
+  return files;
+}
+
+function mirrorServer(api: Parameters<typeof generateReplayServer>[0]): string {
+  // The mirror lives in public/, not dist/, and extensionless pages were
+  // written as <path>/index.html — so the fallback resolves them there.
+  return generateReplayServer(api)
+    .replace("serveStatic({ root: './dist' })", "serveStatic({ root: './public' })")
+    .replace(
+      "app.get('*', serveStatic({ path: './dist/index.html' }));",
+      "app.get('*', (c, next) =>\n" +
+        "  serveStatic({\n" +
+        "    path: `./public${new URL(c.req.url).pathname.replace(/\\/$/, '')}/index.html`,\n" +
+        "  })(c, next)\n" +
+        ');'
+    );
 }
 
 export async function runReconstruct(argv: string[]): Promise<void> {

@@ -1,0 +1,90 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import type { LoadedBundle } from '../bundle/load';
+
+/** Resource types that make up the site as it was actually served. */
+const MIRRORED = new Set([
+  'Document',
+  'Script',
+  'Stylesheet',
+  'Font',
+  'Image',
+  'Media',
+  'Other',
+]);
+
+/** Fetch/XHR responses that are static data rather than a live API call. */
+const DATA_SUFFIX = /\.(json|rsc|txt|xml|svg|wasm|i8|u16|f32|bin|csv)$/i;
+
+export interface MirrorResult {
+  filesWritten: number;
+  pages: string[];
+  bytes: number;
+}
+
+function toDiskPath(url: string, isDocument: boolean): string | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+  // Refuse to escape the output directory, whatever the capture contained.
+  if (pathname.includes('..')) return null;
+
+  if (pathname.endsWith('/')) {
+    pathname += 'index.html';
+  } else if (isDocument && !/\.[a-z0-9]+$/i.test(pathname)) {
+    // An extensionless page like /users becomes /users/index.html — which is
+    // how a static host resolves it anyway, and avoids a file named `users`
+    // colliding with the directory that /users/1 needs.
+    pathname += '/index.html';
+  }
+
+  return pathname.replace(/^\/+/, '');
+}
+
+/**
+ * Writes the site back to disk exactly as it was served. This is the one part
+ * of a reconstruction that involves no inference at all: the bytes are the
+ * bytes. For a server-rendered app with no source maps it is also the only
+ * faithful artifact available — the components were never sent to the browser.
+ */
+export async function emitMirror(
+  bundle: LoadedBundle,
+  outDir: string
+): Promise<MirrorResult> {
+  const seen = new Set<string>();
+  const pages: string[] = [];
+  let filesWritten = 0;
+  let bytes = 0;
+
+  for (const request of bundle.requests) {
+    if (request.method !== 'GET') continue;
+    if (!request.responseBodyHash) continue;
+    if (request.status !== null && request.status >= 300) continue;
+
+    const isMirrored =
+      MIRRORED.has(request.resourceType) ||
+      ((request.resourceType === 'Fetch' || request.resourceType === 'XHR') &&
+        DATA_SUFFIX.test(new URL(request.url).pathname));
+    if (!isMirrored) continue;
+
+    const relative = toDiskPath(request.url, request.resourceType === 'Document');
+    if (relative === null || seen.has(relative)) continue;
+    seen.add(relative);
+
+    const body = bundle.content.get(request.responseBodyHash);
+    if (!body) continue;
+
+    const path = join(outDir, relative);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, body);
+    filesWritten += 1;
+    bytes += body.byteLength;
+
+    if (request.resourceType === 'Document') pages.push(`/${relative}`);
+  }
+
+  return { filesWritten, pages: pages.sort(), bytes };
+}
