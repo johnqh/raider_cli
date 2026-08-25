@@ -20,6 +20,10 @@ export interface MirrorResult {
   filesWritten: number;
   pages: string[];
   bytes: number;
+  /** Every mirror-relative path written, for the link audit to resolve against. */
+  paths: string[];
+  /** Mirrored HTML, so links can be checked without re-reading disk. */
+  documents: Array<{ path: string; html: string }>;
 }
 
 function toDiskPath(url: string, isDocument: boolean): string | null {
@@ -56,8 +60,10 @@ export async function emitMirror(
 ): Promise<MirrorResult> {
   const seen = new Set<string>();
   const pages: string[] = [];
+  const documents: Array<{ path: string; html: string }> = [];
   let filesWritten = 0;
   let bytes = 0;
+  const decoder = new TextDecoder();
 
   for (const request of bundle.requests) {
     if (request.method !== 'GET') continue;
@@ -83,8 +89,17 @@ export async function emitMirror(
     filesWritten += 1;
     bytes += body.byteLength;
 
-    if (request.resourceType === 'Document') pages.push(`/${relative}`);
+    if (request.resourceType === 'Document') {
+      pages.push(`/${relative}`);
+      documents.push({ path: `/${relative}`, html: decoder.decode(body) });
+    }
   }
 
-  return { filesWritten, pages: pages.sort(), bytes };
+  return {
+    filesWritten,
+    pages: pages.sort(),
+    bytes,
+    paths: Array.from(seen).map((p) => `/${p}`).sort(),
+    documents,
+  };
 }

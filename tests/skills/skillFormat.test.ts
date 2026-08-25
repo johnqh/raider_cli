@@ -70,3 +70,39 @@ test('installation instructions cover both install paths', async () => {
   expect(text).toContain('~/.claude/skills');
   expect(text).toContain('bun link');
 });
+
+test('the skill requires enumerating pages from the link audit, not just the route model', async () => {
+  const text = await Bun.file(SKILL).text();
+  expect(text).toContain('07-link-audit.json');
+  expect(text).toContain('page inventory');
+  // The distinction the skill exists to teach: reached vs linked.
+  expect(text).toMatch(/capture \*reached\*/);
+  expect(text).toMatch(/site \*links to\*/);
+});
+
+test('the completion report has four required parts', async () => {
+  const text = await Bun.file(SKILL).text();
+  for (const part of [
+    'Build',
+    'Pages served',
+    'Unreachable links',
+    'Re-capture list',
+  ]) {
+    expect(text).toContain(`**${part}**`);
+  }
+  // Empty sections must still appear, or omission reads as "nothing to report".
+  expect(text).toContain('including when a section is empty');
+});
+
+test('the skill names the artifacts the CLI actually writes, including new ones', async () => {
+  const text = await Bun.file(SKILL).text();
+  for (const artifact of ['06-mirror.json', '07-link-audit.json']) {
+    expect(text).toContain(artifact);
+  }
+});
+
+test('mistakes table covers shipping a reconstruction with broken navigation', async () => {
+  const text = await Bun.file(SKILL).text();
+  expect(text).toContain('unreachablePages');
+  expect(text).toMatch(/nav 404s/);
+});

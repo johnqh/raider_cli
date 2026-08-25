@@ -48,15 +48,31 @@ on the mode:
 | `recovery` | Source maps covered ≥80% of the JS | Copy real original sources from `.xray/02-sources/` into the project. This is recovery, not inference — do not paraphrase them. |
 | `inference` | Little or no source-map coverage | Read `.xray/03-chunks/` and write components that reproduce observed behavior. |
 
-**3. Implement one route at a time.**
+**3. Enumerate every page before implementing any.**
 
-For each route in `.xray/05-route-model.json`, work through it alone rather than
-holding the whole app in context. The route entry names the endpoints that fired
-while it was mounted — those, and only those, are its data dependencies. Call
-them through the generated client in `src/api/client.ts`; never re-derive fetch
-calls by hand, and never invent an endpoint the model does not list.
+Read `.xray/07-link-audit.json` and the report's "Linked but never captured"
+section. The route model lists pages the capture *reached*; the link audit lists
+pages the site *links to*. The second list is always the longer one, and the
+difference is what a reconstruction silently ships broken.
 
-**4. Honor the gaps.**
+Write the two lists out before you start. Your page inventory is their union —
+every route in `05-route-model.json`, plus every `kind: "page"` entry in the
+audit. A page missing from the inventory is a page nobody will notice is missing
+until they click the link.
+
+**4. Implement one page at a time, in inventory order.**
+
+For each page, work through it alone rather than holding the whole app in
+context. The route entry names the endpoints that fired while it was mounted —
+those, and only those, are its data dependencies. Call them through the
+generated client in `src/api/client.ts`; never re-derive fetch calls by hand,
+and never invent an endpoint the model does not list.
+
+For a page that appears only in the link audit, there is no captured content.
+Do not skip it silently and do not invent it. It goes in the re-capture list in
+your completion report (step 6), named by the URL the operator must visit.
+
+**5. Honor the gaps.**
 
 `.xray/01-bundle.json` lists what the capture missed, and `XRAY-GAPS.md` in the
 project repeats it. A route marked `visited: false` has no runtime evidence
@@ -64,19 +80,34 @@ behind it. Leave its `XRAY-GAP` comment in place and implement only the shell
 the router requires. Deleting a gap marker because the page looks empty without
 it is the one thing that turns a reconstruction into a fabrication.
 
-**5. Verify before reporting.**
+**6. Verify, then report in this shape.**
+
+Run all three. Not one, not two:
 
 ```bash
 cd <dir> && bun install && bun run typecheck && bun run build
-bun run server/replay.ts   # then exercise each route
+bun run server/replay.ts &                     # or `bun run serve` in mirror mode
+for p in $(jq -r '.pages[]' .xray/06-mirror.json); do
+  printf '%s %s\n' "$(curl -s -o /dev/null -w '%{http_code}' localhost:8787$p)" "$p"
+done
 ```
 
 The replay server answers captured endpoints with real recorded bodies and
 returns 501 `XRAY-GAP` for anything never captured. A 501 is information, not a
 bug to work around.
 
-A reconstruction that does not build is not finished. Report the build output,
-not your expectation of it.
+Your completion report has four parts, in this order. All four appear every
+time, including when a section is empty — an omitted section reads as "nothing
+to report" when it usually means "not checked":
+
+1. **Build** — the actual output of typecheck and build, not your expectation of it.
+2. **Pages served** — status code per page. Any non-200 is a finding, not a footnote.
+3. **Unreachable links** — every `kind: "page"` entry from the link audit, or the words "none — every internal link resolves".
+4. **Re-capture list** — the exact URLs the operator should visit to close the gaps, or "none needed".
+
+Part 4 is what turns a broken reconstruction into a fixable one. `/league` is
+not a bug in the tool; it is a page nobody visited during capture. Say so, and
+say exactly what to browse next time.
 
 ## Quick Reference
 
@@ -88,6 +119,8 @@ not your expectation of it.
 | `.xray/04-api-model.json` | Endpoints, per-status schemas, auth style |
 | `.xray/05-route-model.json` | Routes, params, visited flag, endpoints per route |
 | `.xray/recordings.json` | Real captured responses the replay server serves |
+| `.xray/06-mirror.json` | Every page and file written back byte-exact |
+| `.xray/07-link-audit.json` | Internal links that resolve to nothing — the pages the capture missed |
 
 ## Common Mistakes
 
@@ -100,3 +133,6 @@ not your expectation of it.
 | Reporting success without building | Generated code that typechecks in your head is not a deliverable. |
 | Treating a redaction placeholder as a real value | `<JWT:a1b2>` marks where a credential was. The same placeholder in two places means it was the same credential — that is the auth flow, not a literal. |
 | Editing generated output to make a test pass | The generators are the source of truth. Patch the generator, then re-run; hand-edits vanish on the next reconstruction. |
+| Treating the route model as the full page list | It lists pages the capture reached. The link audit lists pages the site links to. Reconstructing only the first ships a homepage whose nav 404s. |
+| Reporting success while `unreachablePages` is above zero | The build passing and the site working are different claims. Report the number, then the URLs to re-capture. |
+| Skipping a page because its content is not in the bundle | A page you cannot build is a capture gap to report, not a page to leave out of the report. |

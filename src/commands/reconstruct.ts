@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
+  auditLinks,
   buildApiModel,
   buildRouteModel,
   deriveTimeline,
@@ -22,6 +23,7 @@ import { emitFiles } from '../emit';
 
 export interface ReconstructReport {
   recoveryRatio: number;
+  unreachablePages: number;
   mode: 'recovery' | 'inference' | 'mirror';
   mirroredFiles: number;
   pages: number;
@@ -172,7 +174,20 @@ export async function reconstruct(options: {
   // Stage 5b — the mirror. Always written: these are the served bytes, with no
   // inference involved at all.
   const mirror = await emitMirror(bundle, join(options.outDir, 'public'));
-  await writeJson('06-mirror.json', mirror);
+  await writeJson('06-mirror.json', {
+    filesWritten: mirror.filesWritten,
+    pages: mirror.pages,
+    bytes: mirror.bytes,
+  });
+
+  // Stage 5c — link audit. Everything else verifies what the capture contains;
+  // this is the only stage that asks what it is missing. A reconstruction whose
+  // own navigation 404s is not finished, and no other check would notice.
+  const linkAudit = auditLinks({
+    pages: mirror.documents,
+    available: mirror.paths,
+  });
+  await writeJson('07-link-audit.json', linkAudit);
 
   // With no source maps and no client router, there is no component tree to
   // reconstruct — the components ran on the server and were never sent. The
@@ -218,8 +233,10 @@ export async function reconstruct(options: {
 
   const filesWritten = await emitFiles(options.outDir, project);
 
+  const missingPages = linkAudit.unreachable.filter((u) => u.kind === 'page');
   const report: ReconstructReport = {
     recoveryRatio: ratio,
+    unreachablePages: missingPages.length,
     mode,
     mirroredFiles: mirror.filesWritten,
     pages: mirror.pages.length,
@@ -243,6 +260,7 @@ export async function reconstruct(options: {
       `- Routes: ${routeModel.routes.length} (${routeModel.routes.filter((r) => !r.visited).length} never visited)`,
       `- Endpoints: ${api.endpoints.length}`,
       `- Gaps: ${bundle.gaps.length}`,
+      `- Unreachable internal links: ${missingPages.length} pages, ${linkAudit.unreachable.length - missingPages.length} assets`,
       '',
       '## Routes',
       '',
@@ -252,6 +270,19 @@ export async function reconstruct(options: {
             r.endpoints.length > 0 ? ` → ${r.endpoints.join(', ')}` : ''
           }`
       ),
+      '',
+      '## Linked but never captured',
+      '',
+      ...(linkAudit.unreachable.length > 0
+        ? [
+            'These are linked from captured pages but are not in the bundle.',
+            'Re-capture visiting them, or the reconstruction ships broken navigation.',
+            '',
+            ...linkAudit.unreachable.map(
+              (u) => `- \`${u.link}\` (${u.kind}) — linked from ${u.linkedFrom.join(', ')}`
+            ),
+          ]
+        : ['(none — every internal link resolves)']),
       '',
       '## Pages',
       '',
