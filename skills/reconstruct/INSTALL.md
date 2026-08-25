@@ -28,22 +28,44 @@ bun ~/projects/xray_cli/src/cli.ts reconstruct <bundle.zip> --out <dir>
 
 ## 2. Install the skill
 
-Claude Code discovers personal skills in `~/.claude/skills/`. Symlink rather
-than copy, so the skill tracks the repository:
+The skill is a directory containing `SKILL.md`. Every runtime below discovers
+it the same way — only the parent directory differs. Symlink rather than copy,
+so the skill tracks the repository.
+
+### Claude Code
 
 ```bash
 mkdir -p ~/.claude/skills
 ln -s ~/projects/xray_cli/skills/reconstruct ~/.claude/skills/xray-reconstruct
 ```
 
-Verify it is discovered:
+### Codex
+
+Codex reads `~/.codex/skills/`, and also honours `~/.agents/skills/` as a
+cross-runtime alias shared with Gemini CLI and Copilot CLI. Use the alias if you
+want one install to serve several agents; where both exist at the same scope,
+`.agents/skills/` wins.
 
 ```bash
-ls ~/.claude/skills/xray-reconstruct/SKILL.md
+# Native path
+mkdir -p ~/.codex/skills
+ln -s ~/projects/xray_cli/skills/reconstruct ~/.codex/skills/xray-reconstruct
+
+# …or the shared path, which Gemini CLI and Copilot CLI read too
+mkdir -p ~/.agents/skills
+ln -s ~/projects/xray_cli/skills/reconstruct ~/.agents/skills/xray-reconstruct
 ```
 
-Then start a new Claude Code session — skills are read at session start. Ask it
-to reconstruct a bundle, or invoke it by name with `/xray-reconstruct`.
+### Verify it is discovered
+
+```bash
+ls ~/.claude/skills/xray-reconstruct/SKILL.md   # Claude Code
+ls ~/.codex/skills/xray-reconstruct/SKILL.md    # Codex
+ls ~/.agents/skills/xray-reconstruct/SKILL.md   # shared
+```
+
+Then start a new session — every runtime reads skills at session start. Ask it
+to reconstruct a bundle, or name the skill directly.
 
 ## 3. Confirm end to end
 
@@ -65,6 +87,8 @@ cd /tmp/rebuilt && bun install && bun run build && bun run server/replay.ts
 ## Uninstalling
 
 ```bash
-rm ~/.claude/skills/xray-reconstruct
+rm -f ~/.claude/skills/xray-reconstruct \
+      ~/.codex/skills/xray-reconstruct \
+      ~/.agents/skills/xray-reconstruct
 cd ~/projects/xray_cli && bun unlink
 ```

@@ -5,6 +5,13 @@ description: Use when rebuilding a web application from an xray capture bundle, 
 
 # Reconstructing an app from an xray bundle
 
+## Runtime
+
+Nothing here is specific to one coding agent. The skill drives a shell binary
+and reads JSON files, so it works the same in Claude Code, Codex, Gemini CLI,
+and Copilot CLI. Where a step says "run", run it however your runtime runs
+shell commands.
+
 ## Overview
 
 An xray bundle holds everything a running web app served: its JavaScript, its
@@ -87,7 +94,9 @@ Run all three. Not one, not two:
 ```bash
 cd <dir> && bun install && bun run typecheck && bun run build
 bun run server/replay.ts &                     # or `bun run serve` in mirror mode
-for p in $(jq -r '.pages[]' .xray/06-mirror.json); do
+
+# Bun is already a requirement of the CLI; jq may not be installed.
+for p in $(bun -e 'console.log(require("./.xray/06-mirror.json").pages.join(" "))'); do
   printf '%s %s\n' "$(curl -s -o /dev/null -w '%{http_code}' localhost:8787$p)" "$p"
 done
 ```

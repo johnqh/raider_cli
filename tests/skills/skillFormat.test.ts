@@ -106,3 +106,23 @@ test('mistakes table covers shipping a reconstruction with broken navigation', a
   expect(text).toContain('unreachablePages');
   expect(text).toMatch(/nav 404s/);
 });
+
+test('installation covers Claude Code, Codex, and the shared runtime path', async () => {
+  const text = await Bun.file(INSTALL).text();
+  for (const path of ['~/.claude/skills', '~/.codex/skills', '~/.agents/skills']) {
+    expect(text).toContain(path);
+  }
+});
+
+test('the skill states that it is runtime-neutral', async () => {
+  const text = await Bun.file(SKILL).text();
+  expect(text).toContain('## Runtime');
+  expect(text).toMatch(/Codex/);
+});
+
+test('the skill does not depend on tools that may not be installed', async () => {
+  // Bun is a hard requirement of the CLI; jq is not installed everywhere.
+  // Mentioning jq in a comment is fine; invoking it is not.
+  const text = await Bun.file(SKILL).text();
+  expect(text).not.toMatch(/\$\(jq |\| ?jq |^jq /m);
+});
