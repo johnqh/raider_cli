@@ -193,10 +193,14 @@ export async function reconstruct(options: {
   // With no source maps and no client router, there is no component tree to
   // reconstruct — the components ran on the server and were never sent. The
   // honest artifact is the mirror plus a replay server, not a fabricated SPA.
+  // Without source maps there is no component source to reconstruct — that is
+  // true whether or not a router table was readable, so the presence of routes
+  // must not flip this decision. The honest artifact is the mirror; beautified
+  // chunks are left under .xray/03-chunks for whoever wants to read them.
   const mode: ReconstructReport['mode'] =
     ratio >= RECOVERY_THRESHOLD
       ? 'recovery'
-      : runtimeRoutes.length === 0 && mirror.pages.length > 0
+      : mirror.pages.length > 0
         ? 'mirror'
         : 'inference';
   await writeJson('02-recovery.json', {

@@ -105,3 +105,15 @@ test('refuses a bundle from an unsupported format version', async () => {
     })
   ).rejects.toThrow(/formatVersion/);
 });
+
+test('a readable router table does not flip a map-less capture out of mirror mode', async () => {
+  // Regression: the mirror branch required zero runtime routes. Once the links
+  // probe started populating them, a server-rendered site fell through to
+  // inference and got a React scaffold it has no business having.
+  const OUT2 = `${OUT}-mode`;
+  await rm(OUT2, { recursive: true, force: true });
+
+  const report = await reconstruct({ bundlePath: BUNDLE, outDir: OUT2 });
+  // react-sample ships source maps, so it must still choose recovery.
+  expect(report.mode).toBe('recovery');
+});
