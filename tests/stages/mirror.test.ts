@@ -56,3 +56,33 @@ test('an extensionless page and its children do not collide on disk', async () =
   expect(result.pages).toContain('/users/1/index.html');
   expect((await readFile(`${OUT}/users/index.html`, 'utf8')).length).toBeGreaterThan(0);
 });
+
+test('a client-rendered route is written from its DOM snapshot', async () => {
+  await rm(OUT, { recursive: true, force: true });
+  const bundle = await loadBundle(
+    `${import.meta.dir}/../../fixtures/bundles/react-sample.zip`
+  );
+  // Simulate what the extension records for a client-side navigation: a route
+  // with no served document, evidenced only by the rendered DOM.
+  const html = '<html><body>client-rendered league</body></html>';
+  bundle.content.set('snap1', new TextEncoder().encode(html));
+  bundle.snapshots = { '/league': 'snap1' };
+
+  const result = await emitMirror(bundle, OUT);
+  expect(result.pages).toContain('/league/index.html');
+  expect(result.fromSnapshot).toContain('/league/index.html');
+  expect(await readFile(`${OUT}/league/index.html`, 'utf8')).toContain('league');
+});
+
+test('served bytes always win over a snapshot for the same path', async () => {
+  await rm(OUT, { recursive: true, force: true });
+  const bundle = await loadBundle(
+    `${import.meta.dir}/../../fixtures/bundles/react-sample.zip`
+  );
+  bundle.content.set('snap1', new TextEncoder().encode('<html>SNAPSHOT</html>'));
+  bundle.snapshots = { '/': 'snap1' };
+
+  const result = await emitMirror(bundle, OUT);
+  expect(result.fromSnapshot).not.toContain('/index.html');
+  expect(await readFile(`${OUT}/index.html`, 'utf8')).not.toContain('SNAPSHOT');
+});

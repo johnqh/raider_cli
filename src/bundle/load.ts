@@ -19,6 +19,8 @@ export interface LoadedBundle {
   gaps: Gap[];
   redaction: RedactionEntry[];
   sourceMaps: Record<string, string>;
+  /** route path → hash of the rendered DOM, for client-rendered routes */
+  snapshots: Record<string, string>;
   runtime: RuntimeArtifacts;
   content: Map<string, Uint8Array>;
   text(hash: string): string | null;
@@ -75,6 +77,8 @@ export async function loadBundle(path: string): Promise<LoadedBundle> {
       if (hash) content.set(hash, bytes);
     } else if (name.startsWith('sourcemaps/') && name.endsWith('.map')) {
       content.set(name.slice('sourcemaps/'.length, -'.map'.length), bytes);
+    } else if (name.startsWith('snapshots/') && name.endsWith('.html')) {
+      content.set(name.slice('snapshots/'.length, -'.html'.length), bytes);
     }
   }
 
@@ -90,6 +94,7 @@ export async function loadBundle(path: string): Promise<LoadedBundle> {
     gaps,
     redaction: readJson<RedactionEntry[]>('redaction.json', []),
     sourceMaps: readJson<Record<string, string>>('sourcemaps/index.json', {}),
+    snapshots: readJson<Record<string, string>>('snapshots/index.json', {}),
     runtime: {
       framework: readJson('runtime/framework.json', null),
       routes: readJson('runtime/routes.json', []),

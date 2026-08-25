@@ -178,6 +178,7 @@ export async function reconstruct(options: {
     filesWritten: mirror.filesWritten,
     pages: mirror.pages,
     bytes: mirror.bytes,
+    fromSnapshot: mirror.fromSnapshot,
   });
 
   // Stage 5c — link audit. Everything else verifies what the capture contains;
@@ -256,6 +257,13 @@ export async function reconstruct(options: {
       `- Bundler: ${stack.bundler}`,
       `- Mode: **${mode}** (source-map recovery ${ratio}%)`,
       `- Mirrored: ${mirror.filesWritten} files, ${(mirror.bytes / 1048576).toFixed(1)} MB, ${mirror.pages.length} pages`,
+      ...(mirror.fromSnapshot.length > 0
+        ? [
+            `- Of those, ${mirror.fromSnapshot.length} pages come from rendered-DOM`,
+            '  snapshots rather than served bytes — the server never sent HTML for',
+            '  them, so this is the post-hydration DOM, not source.',
+          ]
+        : []),
       `- Route source: ${usingDerived ? 'derived from Document requests' : 'runtime router table'}`,
       `- Routes: ${routeModel.routes.length} (${routeModel.routes.filter((r) => !r.visited).length} never visited)`,
       `- Endpoints: ${api.endpoints.length}`,

@@ -20,6 +20,8 @@ export interface MirrorResult {
   filesWritten: number;
   pages: string[];
   bytes: number;
+  /** Pages written from a rendered-DOM snapshot rather than served bytes. */
+  fromSnapshot: string[];
   /** Every mirror-relative path written, for the link audit to resolve against. */
   paths: string[];
   /** Mirrored HTML, so links can be checked without re-reading disk. */
@@ -61,6 +63,7 @@ export async function emitMirror(
   const seen = new Set<string>();
   const pages: string[] = [];
   const documents: Array<{ path: string; html: string }> = [];
+  const fromSnapshot: string[] = [];
   let filesWritten = 0;
   let bytes = 0;
   const decoder = new TextDecoder();
@@ -95,8 +98,30 @@ export async function emitMirror(
     }
   }
 
+  // A client-rendered route was never served as a document. Its rendered DOM is
+  // the only evidence the page existed, so write it where a host would serve
+  // that URL — but only where nothing real was captured, so served bytes always
+  // win over a snapshot.
+  for (const [routePath, hash] of Object.entries(bundle.snapshots)) {
+    const relative = toDiskPath(`https://x${routePath}`, true);
+    if (relative === null || seen.has(relative)) continue;
+    const body = bundle.content.get(hash);
+    if (!body) continue;
+
+    seen.add(relative);
+    const path = join(outDir, relative);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, body);
+    filesWritten += 1;
+    bytes += body.byteLength;
+    pages.push(`/${relative}`);
+    fromSnapshot.push(`/${relative}`);
+    documents.push({ path: `/${relative}`, html: decoder.decode(body) });
+  }
+
   return {
     filesWritten,
+    fromSnapshot: fromSnapshot.sort(),
     pages: pages.sort(),
     bytes,
     paths: Array.from(seen).map((p) => `/${p}`).sort(),
