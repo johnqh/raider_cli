@@ -289,7 +289,7 @@ function mirrorProject(input: {
     2
   );
 
-  files['README.md'] = [
+  const readme: Array<string | null> = [
     `# ${new URL(input.origin).host} — reconstruction`,
     '',
     `Rebuilt by xray from a capture of ${input.origin}.`,
@@ -305,7 +305,7 @@ function mirrorProject(input: {
     `Detected stack: ${input.stack.framework}${input.stack.frameworkVersion ? ` ${input.stack.frameworkVersion}` : ''}`,
     input.stack.stateLibraries.length > 0
       ? `State libraries: ${input.stack.stateLibraries.join(', ')}`
-      : '',
+      : null,
     '',
     '## Run it',
     '',
@@ -322,14 +322,17 @@ function mirrorProject(input: {
     '',
     '- Server component source — it ran on the server and was never sent.',
     '- Any behaviour behind an endpoint the capture did not exercise.',
-    input.gaps.length > 0 ? `- ${input.gaps.length} resources listed in XRAY-GAPS.md.` : '',
+    input.gaps.length > 0
+      ? `- ${input.gaps.length} resources listed in XRAY-GAPS.md.`
+      : null,
     '',
     '## Pages',
     '',
     ...input.mirror.pages.map((p) => `- \`${p}\``),
     '',
-  ]
-    .filter((line) => line !== '')
+  ];
+  files['README.md'] = readme
+    .filter((line): line is string => line !== null)
     .join('\n');
 
   if (input.gaps.length > 0) {
