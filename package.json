@@ -1,6 +1,6 @@
 {
   "name": "@sudobility/xray_cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Reconstruct a web app from an xray capture bundle",
   "license": "BUSL-1.1",
   "author": "Sudobility Inc.",
@@ -40,11 +40,12 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "test:unit": "bun test tests/bundle tests/commands tests/fixtures tests/introspect tests/skills tests/stages tests/roundTrip.test.ts",
     "fixtures:build": "bun run scripts/buildFixtureApps.ts",
     "fixtures:capture": "bun run scripts/captureFixture.ts"
   },
   "dependencies": {
-    "@sudobility/xray_lib": "^0.0.1",
+    "@sudobility/xray_lib": "^0.0.2",
     "fflate": "^0.8.2",
     "hono": "^4.6.0",
     "prettier": "^3.6.2"
