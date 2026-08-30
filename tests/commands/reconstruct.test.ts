@@ -26,12 +26,12 @@ test('chooses recovery mode when the app shipped source maps', async () => {
 test('writes every stage artifact', async () => {
   await run();
   for (const path of [
-    '.xray/01-bundle.json',
-    '.xray/02-recovery.json',
-    '.xray/04-api-model.json',
-    '.xray/05-route-model.json',
-    '.xray/recordings.json',
-    '.xray/report.md',
+    '.raider/01-bundle.json',
+    '.raider/02-recovery.json',
+    '.raider/04-api-model.json',
+    '.raider/05-route-model.json',
+    '.raider/recordings.json',
+    '.raider/report.md',
   ]) {
     expect(await Bun.file(`${OUT}/${path}`).exists()).toBe(true);
   }
@@ -39,7 +39,7 @@ test('writes every stage artifact', async () => {
 
 test('the api model contains exactly the endpoints the fixture app called', async () => {
   await run();
-  const model = JSON.parse(await readFile(`${OUT}/.xray/04-api-model.json`, 'utf8'));
+  const model = JSON.parse(await readFile(`${OUT}/.raider/04-api-model.json`, 'utf8'));
   const templates = model.endpoints.map((e: { template: string }) => e.template).sort();
   expect(templates).toEqual([
     '/api/login',
@@ -52,7 +52,7 @@ test('the api model contains exactly the endpoints the fixture app called', asyn
 
 test('HTML navigations and preflights are excluded from the api model', async () => {
   await run();
-  const model = JSON.parse(await readFile(`${OUT}/.xray/04-api-model.json`, 'utf8'));
+  const model = JSON.parse(await readFile(`${OUT}/.raider/04-api-model.json`, 'utf8'));
   const keys = model.endpoints.map((e: { key: string }) => e.key);
   expect(keys.some((k: string) => k.startsWith('OPTIONS'))).toBe(false);
   expect(keys).not.toContain('GET /users');
@@ -60,11 +60,11 @@ test('HTML navigations and preflights are excluded from the api model', async ()
 
 test('recovers original source files rather than minified chunks', async () => {
   await run();
-  const recovery = JSON.parse(await readFile(`${OUT}/.xray/02-recovery.json`, 'utf8'));
+  const recovery = JSON.parse(await readFile(`${OUT}/.raider/02-recovery.json`, 'utf8'));
   expect(recovery.files.length).toBeGreaterThan(0);
   expect(recovery.files.some((f: string) => f.endsWith('.tsx'))).toBe(true);
 
-  const recovered = await readFile(`${OUT}/.xray/02-sources/src/api.ts`, 'utf8');
+  const recovered = await readFile(`${OUT}/.raider/02-sources/src/api.ts`, 'utf8');
   expect(recovered).toContain('access_token');
 });
 
@@ -83,7 +83,7 @@ test('generates a project that has the expected shape', async () => {
 
 test('recordings are keyed by endpoint and hold real captured bodies', async () => {
   await run();
-  const recordings = JSON.parse(await readFile(`${OUT}/.xray/recordings.json`, 'utf8'));
+  const recordings = JSON.parse(await readFile(`${OUT}/.raider/recordings.json`, 'utf8'));
   const users = recordings['GET /api/users'];
   expect(users[0].status).toBe(200);
   expect(users[0].body.users.length).toBeGreaterThan(0);

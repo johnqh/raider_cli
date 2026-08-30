@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { unzipSync, strFromU8 } from 'fflate';
-import { validateManifest, parseJsonl, type CapturedRequest } from '@sudobility/xray_lib';
+import { validateManifest, parseJsonl, type CapturedRequest } from '@sudobility/raider_lib';
 import { captureApp } from '../../src/capture/harness';
 import { startFixtureApi } from '../../fixtures/api/server';
 
@@ -19,7 +19,7 @@ test(
       });
 
       const files = unzipSync(zipped);
-      const manifest = JSON.parse(strFromU8(files['xray.json']!));
+      const manifest = JSON.parse(strFromU8(files['raider.json']!));
       expect(validateManifest(manifest).ok).toBe(true);
       expect(manifest.stack.framework).toBe('react');
       expect(manifest.stack.bundler).toBe('vite');
@@ -70,7 +70,7 @@ test(
         outName: 'vue-sample',
       });
       const files = unzipSync(zipped);
-      const manifest = JSON.parse(strFromU8(files['xray.json']!));
+      const manifest = JSON.parse(strFromU8(files['raider.json']!));
       expect(manifest.stack.framework).toBe('vue');
       expect(manifest.stack.frameworkVersion).toMatch(/^3\./);
       expect(manifest.stack.router).toBe('vue-router');

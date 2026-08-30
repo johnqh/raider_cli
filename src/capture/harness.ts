@@ -10,7 +10,7 @@ import {
   type CapturedRequest,
   type Gap,
   type StackFingerprint,
-} from '@sudobility/xray_lib';
+} from '@sudobility/raider_lib';
 import { PROBE_SOURCES } from '../introspect/probes';
 
 export interface CaptureOptions {

@@ -1,10 +1,10 @@
-# xray_cli
+# raider_cli
 
-Reconstruct a working web app from an **xray** capture bundle — plus the agent
+Reconstruct a working web app from an **raider** capture bundle — plus the agent
 skill that drives the reconstruction.
 
 ```bash
-bun add -g @sudobility/xray_cli
+bun add -g @sudobility/raider_cli
 ```
 
 Requires [Bun](https://bun.sh) ≥ 1.2. The CLI ships as TypeScript and runs
@@ -13,12 +13,12 @@ under Bun directly.
 ## Usage
 
 ```bash
-xray reconstruct <bundle.zip|dir> --out <dir>
-xray install [--claude] [--codex] [--agents] [--all]
-xray uninstall [--claude] [--codex] [--agents]
+raider reconstruct <bundle.zip|dir> --out <dir>
+raider install [--claude] [--codex] [--agents] [--all]
+raider uninstall [--claude] [--codex] [--agents]
 ```
 
-`xray install` symlinks the `reconstruct` skill into the personal skills
+`raider install` symlinks the `reconstruct` skill into the personal skills
 directory of a coding agent — `.claude/skills`, `.codex/skills`, or the shared
 `.agents/skills` path. The skill itself is runtime-agnostic: it drives a shell
 binary and reads JSON, so it works the same in Claude Code, Codex, Gemini CLI,
@@ -26,7 +26,7 @@ and Copilot CLI.
 
 ## The split: CLI does the deterministic work, the agent does the judgment
 
-`xray reconstruct` performs every stage that has a right answer — source-map
+`raider reconstruct` performs every stage that has a right answer — source-map
 recovery, bundle unpacking, JSON Schema inference, API and route modelling,
 project scaffold, and a [Hono](https://hono.dev) replay server that serves the
 captured traffic back. Each stage writes a JSON artifact to disk.
@@ -41,22 +41,22 @@ covered by `bun test`; only genuinely model-shaped work lives in prose.
 
 ## Why this is a separate repository
 
-[`xray_lib`](https://github.com/johnqh/xray_lib) is imported by
-[`xray_extension`](https://github.com/johnqh/xray_extension), which ships into
+[`raider_lib`](https://github.com/johnqh/raider_lib) is imported by
+[`raider_extension`](https://github.com/johnqh/raider_extension), which ships into
 a Chrome MV3 bundle. Its defining constraint is that it performs no I/O — no
 filesystem, no `DOM` in its tsconfig `lib` — which is what keeps it trivially
 testable and safe to bundle for the browser.
 
 A CLI is the opposite: it needs `fs`, `path`, `process`, and zip extraction.
-Putting that in `xray_lib` would place Node-only code in the dependency graph
+Putting that in `raider_lib` would place Node-only code in the dependency graph
 of a browser artifact and would end the mechanical enforcement of that purity.
 
 So the dependency shape is a diamond, not a chain:
 
 ```
-xray_lib              pure: bundle format, redaction, coverage, inference
-   ├── xray_extension   browser: CDP capture, offscreen buffer, side panel
-   └── xray_cli         node: unzip, filesystem, codegen + the reconstruct skill
+raider_lib              pure: bundle format, redaction, coverage, inference
+   ├── raider_extension   browser: CDP capture, offscreen buffer, side panel
+   └── raider_cli         node: unzip, filesystem, codegen + the reconstruct skill
 ```
 
 The two consumers never see each other.
@@ -71,14 +71,14 @@ bun run fixtures:build      # build the sample apps
 bun run fixtures:capture    # capture them into fixtures/bundles/
 ```
 
-## The xray project
+## The raider project
 
 | Repository | Role |
 |---|---|
-| [`xray_lib`](https://github.com/johnqh/xray_lib) | Bundle format and pure analysis |
-| [`xray_extension`](https://github.com/johnqh/xray_extension) | Chrome MV3 extension that performs the capture |
-| [`xray_cli`](https://github.com/johnqh/xray_cli) | Reconstruction CLI and the agent skill — this repo |
-| [`xray_web`](https://github.com/johnqh/xray_web) | Landing site |
+| [`raider_lib`](https://github.com/johnqh/raider_lib) | Bundle format and pure analysis |
+| [`raider_extension`](https://github.com/johnqh/raider_extension) | Chrome MV3 extension that performs the capture |
+| [`raider_cli`](https://github.com/johnqh/raider_cli) | Reconstruction CLI and the agent skill — this repo |
+| [`raider_web`](https://github.com/johnqh/raider_web) | Landing site |
 
 ## License
 

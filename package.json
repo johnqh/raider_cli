@@ -1,19 +1,19 @@
 {
-  "name": "@sudobility/xray_cli",
+  "name": "@sudobility/raider_cli",
   "version": "0.0.2",
-  "description": "Reconstruct a web app from an xray capture bundle",
+  "description": "Reconstruct a web app from an raider capture bundle",
   "license": "BUSL-1.1",
   "author": "Sudobility Inc.",
-  "homepage": "https://github.com/johnqh/xray_cli#readme",
+  "homepage": "https://github.com/johnqh/raider_cli#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/johnqh/xray_cli.git"
+    "url": "git+https://github.com/johnqh/raider_cli.git"
   },
   "bugs": {
-    "url": "https://github.com/johnqh/xray_cli/issues"
+    "url": "https://github.com/johnqh/raider_cli/issues"
   },
   "keywords": [
-    "xray",
+    "raider",
     "reconstruction",
     "cli",
     "codegen",
@@ -23,7 +23,7 @@
   ],
   "type": "module",
   "bin": {
-    "xray": "./src/cli.ts"
+    "raider": "./src/cli.ts"
   },
   "files": [
     "src",
@@ -45,7 +45,7 @@
     "fixtures:capture": "bun run scripts/captureFixture.ts"
   },
   "dependencies": {
-    "@sudobility/xray_lib": "^0.0.2",
+    "@sudobility/raider_lib": "^0.0.2",
     "fflate": "^0.8.2",
     "hono": "^4.6.0",
     "prettier": "^3.6.2"

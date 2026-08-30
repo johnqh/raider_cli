@@ -42,13 +42,13 @@ test('frontmatter stays within the 1024 character limit', async () => {
 
 test('the skill names the exact command it drives', async () => {
   const text = await Bun.file(SKILL).text();
-  expect(text).toContain('xray reconstruct');
+  expect(text).toContain('raider reconstruct');
   expect(text).toContain('--out');
 });
 
 test('the skill carries the gap rule', async () => {
   const text = await Bun.file(SKILL).text();
-  expect(text).toContain('XRAY-GAP');
+  expect(text).toContain('RAIDER-GAP');
 });
 
 test('the skill names every artifact the CLI actually writes', async () => {
@@ -130,9 +130,9 @@ test('the skill does not depend on tools that may not be installed', async () =>
 test('installation documents the CLI install command for each runtime', async () => {
   const text = await Bun.file(INSTALL).text();
   for (const cmd of [
-    'xray install --claude',
-    'xray install --codex',
-    'xray install --agents',
+    'raider install --claude',
+    'raider install --codex',
+    'raider install --agents',
   ]) {
     expect(text).toContain(cmd);
   }

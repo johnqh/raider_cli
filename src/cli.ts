@@ -20,9 +20,9 @@ switch (command) {
   default:
     console.error(
       'usage:\n' +
-        '  xray reconstruct <bundle.zip|dir> --out <dir>\n' +
-        '  xray install [--claude] [--codex] [--agents] [--all]\n' +
-        '  xray uninstall [--claude] [--codex] [--agents]'
+        '  raider reconstruct <bundle.zip|dir> --out <dir>\n' +
+        '  raider install [--claude] [--codex] [--agents] [--all]\n' +
+        '  raider uninstall [--claude] [--codex] [--agents]'
     );
     process.exit(1);
 }

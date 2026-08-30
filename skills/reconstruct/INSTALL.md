@@ -1,29 +1,29 @@
-# Installing the xray reconstruct skill
+# Installing the raider reconstruct skill
 
-The skill drives the `xray` CLI, so install both.
+The skill drives the `raider` CLI, so install both.
 
 ## 1. Install the CLI
 
 From a clone of this repository:
 
 ```bash
-cd ~/projects/xray_lib && bun install && bun run build
-cd ~/projects/xray_cli && bun install
+cd ~/projects/raider_lib && bun install && bun run build
+cd ~/projects/raider_cli && bun install
 bun link
 ```
 
-`bun link` registers the `xray` binary globally. Verify:
+`bun link` registers the `raider` binary globally. Verify:
 
 ```bash
-xray reconstruct
-# usage: xray reconstruct <bundle.zip|dir> --out <dir>
+raider reconstruct
+# usage: raider reconstruct <bundle.zip|dir> --out <dir>
 ```
 
 If the linked binary is not on your PATH, invoke the entry point directly. The
-skill works either way — substitute this wherever it says `xray`:
+skill works either way — substitute this wherever it says `raider`:
 
 ```bash
-bun ~/projects/xray_cli/src/cli.ts reconstruct <bundle.zip> --out <dir>
+bun ~/projects/raider_cli/src/cli.ts reconstruct <bundle.zip> --out <dir>
 ```
 
 ## 2. Install the skill
@@ -31,10 +31,10 @@ bun ~/projects/xray_cli/src/cli.ts reconstruct <bundle.zip> --out <dir>
 The CLI installs it for you. Pick your runtime:
 
 ```bash
-xray install --claude    # Claude Code   → ~/.claude/skills
-xray install --codex     # Codex         → ~/.codex/skills
-xray install --agents    # shared alias  → ~/.agents/skills
-xray install --all       # all three
+raider install --claude    # Claude Code   → ~/.claude/skills
+raider install --codex     # Codex         → ~/.codex/skills
+raider install --agents    # shared alias  → ~/.agents/skills
+raider install --all       # all three
 ```
 
 `--agents` is the cross-runtime alias Codex, Gemini CLI, and Copilot CLI all
@@ -50,7 +50,7 @@ than deleted.
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s ~/projects/xray_cli/skills/reconstruct ~/.codex/skills/xray-reconstruct
+ln -s ~/projects/raider_cli/skills/reconstruct ~/.codex/skills/raider-reconstruct
 ```
 
 Then start a new session — every runtime reads skills at session start.
@@ -58,8 +58,8 @@ Then start a new session — every runtime reads skills at session start.
 ## 3. Confirm end to end
 
 ```bash
-xray reconstruct ~/projects/xray_cli/fixtures/bundles/react-sample.zip --out /tmp/rebuilt
-cat /tmp/rebuilt/.xray/report.md
+raider reconstruct ~/projects/raider_cli/fixtures/bundles/react-sample.zip --out /tmp/rebuilt
+cat /tmp/rebuilt/.raider/report.md
 ```
 
 Expected: framework `react`, bundler `vite`, mode `recovery` at 100%, four
@@ -75,6 +75,6 @@ cd /tmp/rebuilt && bun install && bun run build && bun run server/replay.ts
 ## Uninstalling
 
 ```bash
-xray uninstall --all
-cd ~/projects/xray_cli && bun unlink
+raider uninstall --all
+cd ~/projects/raider_cli && bun unlink
 ```

@@ -15,7 +15,7 @@ import {
   recoveryRatio,
   type EndpointSample,
   type StackFingerprint,
-} from '@sudobility/xray_lib';
+} from '@sudobility/raider_lib';
 import { loadBundle } from '../bundle/load';
 import { unpackChunks } from '../stages/unpack';
 import { emitMirror } from '../stages/mirror';
@@ -55,11 +55,11 @@ export async function reconstruct(options: {
   outDir: string;
 }): Promise<ReconstructReport> {
   const bundle = await loadBundle(options.bundlePath);
-  const xrayDir = join(options.outDir, '.xray');
-  await mkdir(xrayDir, { recursive: true });
+  const raiderDir = join(options.outDir, '.raider');
+  await mkdir(raiderDir, { recursive: true });
 
   const writeJson = (name: string, value: unknown) =>
-    writeFile(join(xrayDir, name), JSON.stringify(value, null, 2), 'utf8');
+    writeFile(join(raiderDir, name), JSON.stringify(value, null, 2), 'utf8');
 
   // Stage 1 — bundle summary, gaps first.
   await writeJson('01-bundle.json', {
@@ -90,7 +90,7 @@ export async function reconstruct(options: {
 
   const ratio = recoveryRatio({ mappedBytes, totalBytes: totalJsBytes });
   if (Object.keys(recovered).length > 0) {
-    await emitFiles(join(xrayDir, '02-sources'), recovered);
+    await emitFiles(join(raiderDir, '02-sources'), recovered);
   }
 
   // Stage 3 — unpack whenever source maps did not carry the day.
@@ -103,7 +103,7 @@ export async function reconstruct(options: {
         files[`chunk-${index}/module-${module.id}.js`] = module.source;
       }
     });
-    await emitFiles(join(xrayDir, '03-chunks'), files);
+    await emitFiles(join(raiderDir, '03-chunks'), files);
   }
 
   // Stage 4 — API model, plus the recordings the replay server serves.
@@ -196,7 +196,7 @@ export async function reconstruct(options: {
   // Without source maps there is no component source to reconstruct — that is
   // true whether or not a router table was readable, so the presence of routes
   // must not flip this decision. The honest artifact is the mirror; beautified
-  // chunks are left under .xray/03-chunks for whoever wants to read them.
+  // chunks are left under .raider/03-chunks for whoever wants to read them.
   const mode: ReconstructReport['mode'] =
     ratio >= RECOVERY_THRESHOLD
       ? 'recovery'
@@ -252,9 +252,9 @@ export async function reconstruct(options: {
   };
 
   await writeFile(
-    join(xrayDir, 'report.md'),
+    join(raiderDir, 'report.md'),
     [
-      '# xray reconstruction report',
+      '# raider reconstruction report',
       '',
       `- Origin: ${bundle.manifest.origin}`,
       `- Framework: ${stack.framework} ${stack.frameworkVersion ?? '(version unknown)'}`,
@@ -335,7 +335,7 @@ function mirrorProject(input: {
   const readme: Array<string | null> = [
     `# ${new URL(input.origin).host} — reconstruction`,
     '',
-    `Rebuilt by xray from a capture of ${input.origin}.`,
+    `Rebuilt by raider from a capture of ${input.origin}.`,
     '',
     '## What this is',
     '',
@@ -366,7 +366,7 @@ function mirrorProject(input: {
     '- Server component source — it ran on the server and was never sent.',
     '- Any behaviour behind an endpoint the capture did not exercise.',
     input.gaps.length > 0
-      ? `- ${input.gaps.length} resources listed in XRAY-GAPS.md.`
+      ? `- ${input.gaps.length} resources listed in RAIDER-GAPS.md.`
       : null,
     '',
     '## Pages',
@@ -379,7 +379,7 @@ function mirrorProject(input: {
     .join('\n');
 
   if (input.gaps.length > 0) {
-    files['XRAY-GAPS.md'] = [
+    files['RAIDER-GAPS.md'] = [
       '# Capture gaps',
       '',
       'Requested by the site but not captured. Anything depending on these is',
@@ -416,12 +416,12 @@ export async function runReconstruct(argv: string[]): Promise<void> {
   const outDir = outIndex >= 0 ? argv[outIndex + 1] : undefined;
 
   if (!bundlePath || !outDir) {
-    console.error('usage: xray reconstruct <bundle.zip|dir> --out <dir>');
+    console.error('usage: raider reconstruct <bundle.zip|dir> --out <dir>');
     process.exit(1);
   }
 
   const report = await reconstruct({ bundlePath, outDir });
   console.log(JSON.stringify(report, null, 2));
-  console.log(`\nArtifacts: ${join(outDir, '.xray')}`);
-  console.log(`Report:    ${join(outDir, '.xray', 'report.md')}`);
+  console.log(`\nArtifacts: ${join(outDir, '.raider')}`);
+  console.log(`Report:    ${join(outDir, '.raider', 'report.md')}`);
 }

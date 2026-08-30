@@ -83,7 +83,7 @@ test(
       const missing = await fetch('http://localhost:8900/api/never-captured');
       expect(missing.status).toBe(501);
       const body = (await missing.json()) as { error: string };
-      expect(body.error).toBe('XRAY-GAP');
+      expect(body.error).toBe('RAIDER-GAP');
     } finally {
       server.kill();
     }
