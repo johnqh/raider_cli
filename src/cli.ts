@@ -20,9 +20,9 @@ switch (command) {
   default:
     console.error(
       'usage:\n' +
-        '  raider reconstruct <bundle.zip|dir> --out <dir>\n' +
-        '  raider install [--claude] [--codex] [--agents] [--all]\n' +
-        '  raider uninstall [--claude] [--codex] [--agents]'
+        '  raidr reconstruct <bundle.zip|dir> --out <dir>\n' +
+        '  raidr install [--claude] [--codex] [--agents] [--all]\n' +
+        '  raidr uninstall [--claude] [--codex] [--agents]'
     );
     process.exit(1);
 }

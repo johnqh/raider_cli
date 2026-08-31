@@ -9,11 +9,11 @@ import {
   type Gap,
   type RedactionEntry,
   type RuntimeArtifacts,
-  type RaiderManifest,
-} from '@sudobility/raider_lib';
+  type RaidrManifest,
+} from '@sudobility/raidr_lib';
 
 export interface LoadedBundle {
-  manifest: RaiderManifest;
+  manifest: RaidrManifest;
   requests: CapturedRequest[];
   frames: CapturedFrame[];
   gaps: Gap[];
@@ -58,8 +58,8 @@ export async function loadBundle(path: string): Promise<LoadedBundle> {
     return text === null ? fallback : (JSON.parse(text) as T);
   };
 
-  const manifestText = readText('raider.json');
-  if (manifestText === null) throw new Error(`${path}: raider.json not found`);
+  const manifestText = readText('raidr.json');
+  if (manifestText === null) throw new Error(`${path}: raidr.json not found`);
 
   const validation = validateManifest(JSON.parse(manifestText));
   if (!validation.ok) {

@@ -15,7 +15,7 @@ const SKILL_DIRS: Record<Runtime, string> = {
   agents: '.agents/skills',
 };
 
-const SKILL_NAME = 'raider-reconstruct';
+const SKILL_NAME = 'raidr-reconstruct';
 
 export interface InstallResult {
   runtime: Runtime;
@@ -107,7 +107,7 @@ export async function runInstall(argv: string[]): Promise<void> {
   const runtimes = parseRuntimes(argv);
   if (!runtimes) {
     console.error(
-      'usage: raider install [--claude] [--codex] [--agents] [--all]\n' +
+      'usage: raidr install [--claude] [--codex] [--agents] [--all]\n' +
         '  --claude  Claude Code      ~/.claude/skills\n' +
         '  --codex   Codex            ~/.codex/skills\n' +
         '  --agents  shared alias     ~/.agents/skills (Codex, Gemini CLI, Copilot CLI)'

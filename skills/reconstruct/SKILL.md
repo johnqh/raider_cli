@@ -1,9 +1,9 @@
 ---
-name: raider-reconstruct
-description: Use when rebuilding a web application from an raider capture bundle, when handed an raider-*.zip of captured traffic, or when asked to reverse engineer a site from its recorded network activity and JavaScript.
+name: raidr-reconstruct
+description: Use when rebuilding a web application from an raidr capture bundle, when handed an raidr-*.zip of captured traffic, or when asked to reverse engineer a site from its recorded network activity and JavaScript.
 ---
 
-# Reconstructing an app from an raider bundle
+# Reconstructing an app from an raidr bundle
 
 ## Runtime
 
@@ -14,9 +14,9 @@ shell commands.
 
 ## Overview
 
-An raider bundle holds everything a running web app served: its JavaScript, its
+An raidr bundle holds everything a running web app served: its JavaScript, its
 HTML, its API traffic, its source maps where they existed, and an explicit list
-of what the capture missed. The `raider` CLI performs every deterministic stage.
+of what the capture missed. The `raidr` CLI performs every deterministic stage.
 Your job is the part it cannot do — turning recovered or minified source into
 readable components wired to real routes.
 
@@ -25,7 +25,7 @@ write must trace to something in it. Where the bundle is silent, say so.
 
 ## When to Use
 
-- A `.zip` produced by the raider capture extension, or an unpacked bundle directory
+- A `.zip` produced by the raidr capture extension, or an unpacked bundle directory
 - A request to rebuild, clone, or reverse engineer an app from captured traffic
 - Re-running a reconstruction with better judgment against an existing bundle
 
@@ -37,14 +37,14 @@ Not for: capturing traffic (that is the extension), or analyzing a HAR file
 **1. Run the CLI first. Always.**
 
 ```bash
-raider reconstruct <bundle.zip> --out <dir>
+raidr reconstruct <bundle.zip> --out <dir>
 ```
 
-It writes the project and, under `<dir>/.raider/`, the artifacts you work from.
+It writes the project and, under `<dir>/.raidr/`, the artifacts you work from.
 Do not read the raw bundle before running it — the artifacts are the same data,
 already clustered, typed, and de-duplicated.
 
-**2. Read `<dir>/.raider/report.md`.**
+**2. Read `<dir>/.raidr/report.md`.**
 
 It names the framework, the reconstruction mode, the routes (including which
 were never visited), the endpoints, and the gap count. What you do next depends
@@ -52,12 +52,12 @@ on the mode:
 
 | Mode | Meaning | What you do |
 |---|---|---|
-| `recovery` | Source maps covered ≥80% of the JS | Copy real original sources from `.raider/02-sources/` into the project. This is recovery, not inference — do not paraphrase them. |
-| `inference` | Little or no source-map coverage | Read `.raider/03-chunks/` and write components that reproduce observed behavior. |
+| `recovery` | Source maps covered ≥80% of the JS | Copy real original sources from `.raidr/02-sources/` into the project. This is recovery, not inference — do not paraphrase them. |
+| `inference` | Little or no source-map coverage | Read `.raidr/03-chunks/` and write components that reproduce observed behavior. |
 
 **3. Enumerate every page before implementing any.**
 
-Read `.raider/07-link-audit.json` and the report's "Linked but never captured"
+Read `.raidr/07-link-audit.json` and the report's "Linked but never captured"
 section. The route model lists pages the capture *reached*; the link audit lists
 pages the site *links to*. The second list is always the longer one, and the
 difference is what a reconstruction silently ships broken.
@@ -81,9 +81,9 @@ your completion report (step 6), named by the URL the operator must visit.
 
 **5. Honor the gaps.**
 
-`.raider/01-bundle.json` lists what the capture missed, and `RAIDER-GAPS.md` in the
+`.raidr/01-bundle.json` lists what the capture missed, and `RAIDR-GAPS.md` in the
 project repeats it. A route marked `visited: false` has no runtime evidence
-behind it. Leave its `RAIDER-GAP` comment in place and implement only the shell
+behind it. Leave its `RAIDR-GAP` comment in place and implement only the shell
 the router requires. Deleting a gap marker because the page looks empty without
 it is the one thing that turns a reconstruction into a fabrication.
 
@@ -96,13 +96,13 @@ cd <dir> && bun install && bun run typecheck && bun run build
 bun run server/replay.ts &                     # or `bun run serve` in mirror mode
 
 # Bun is already a requirement of the CLI; jq may not be installed.
-for p in $(bun -e 'console.log(require("./.raider/06-mirror.json").pages.join(" "))'); do
+for p in $(bun -e 'console.log(require("./.raidr/06-mirror.json").pages.join(" "))'); do
   printf '%s %s\n' "$(curl -s -o /dev/null -w '%{http_code}' localhost:8787$p)" "$p"
 done
 ```
 
 The replay server answers captured endpoints with real recorded bodies and
-returns 501 `RAIDER-GAP` for anything never captured. A 501 is information, not a
+returns 501 `RAIDR-GAP` for anything never captured. A 501 is information, not a
 bug to work around.
 
 Your completion report has four parts, in this order. All four appear every
@@ -122,14 +122,14 @@ say exactly what to browse next time.
 
 | Artifact | Holds |
 |---|---|
-| `.raider/report.md` | Start here: mode, routes, endpoints, gaps |
-| `.raider/02-sources/` | Recovered original files (recovery mode) |
-| `.raider/03-chunks/` | Beautified chunks (inference mode) |
-| `.raider/04-api-model.json` | Endpoints, per-status schemas, auth style |
-| `.raider/05-route-model.json` | Routes, params, visited flag, endpoints per route |
-| `.raider/recordings.json` | Real captured responses the replay server serves |
-| `.raider/06-mirror.json` | Every page and file written back byte-exact |
-| `.raider/07-link-audit.json` | Internal links that resolve to nothing — the pages the capture missed |
+| `.raidr/report.md` | Start here: mode, routes, endpoints, gaps |
+| `.raidr/02-sources/` | Recovered original files (recovery mode) |
+| `.raidr/03-chunks/` | Beautified chunks (inference mode) |
+| `.raidr/04-api-model.json` | Endpoints, per-status schemas, auth style |
+| `.raidr/05-route-model.json` | Routes, params, visited flag, endpoints per route |
+| `.raidr/recordings.json` | Real captured responses the replay server serves |
+| `.raidr/06-mirror.json` | Every page and file written back byte-exact |
+| `.raidr/07-link-audit.json` | Internal links that resolve to nothing — the pages the capture missed |
 
 ## Common Mistakes
 
@@ -137,7 +137,7 @@ say exactly what to browse next time.
 |---|---|
 | Reading the raw zip instead of running the CLI | The artifacts are the same data, already analyzed. Re-deriving them wastes context and produces worse results. |
 | Writing an endpoint absent from the API model | Endpoints come from observed traffic. One that is not in the model was never called; you are inventing an API. |
-| Filling in a never-visited route with plausible content | There is no evidence for it. The `RAIDER-GAP` marker is the honest output. |
+| Filling in a never-visited route with plausible content | There is no evidence for it. The `RAIDR-GAP` marker is the honest output. |
 | Hand-writing `fetch` calls | The generated client is typed from real payloads. Bypassing it discards the schema work. |
 | Reporting success without building | Generated code that typechecks in your head is not a deliverable. |
 | Treating a redaction placeholder as a real value | `<JWT:a1b2>` marks where a credential was. The same placeholder in two places means it was the same credential — that is the auth flow, not a literal. |

@@ -3,9 +3,9 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@sudobility/raider_cli",
+      "name": "@sudobility/raidr_cli",
       "dependencies": {
-        "@sudobility/raider_lib": "^0.0.2",
+        "@sudobility/raidr_lib": "^0.0.3",
         "fflate": "^0.8.2",
         "hono": "^4.6.0",
         "prettier": "^3.6.2",
@@ -18,7 +18,7 @@
     },
   },
   "packages": {
-    "@sudobility/raider_lib": ["@sudobility/raider_lib@0.0.2", "", { "dependencies": { "fflate": "^0.8.2" } }, "sha512-f6I+Bq9lf+TSw4id8rpXWAYs9COCYnwgKWxsN6oBinZ1bdRQQJ9Bzz5ffmSCKzosG9PGackUAYt5+WisIMLCIA=="],
+    "@sudobility/raidr_lib": ["@sudobility/raidr_lib@0.0.3", "", { "dependencies": { "fflate": "^0.8.2" } }, "sha512-K21HA2I1l+jyM6Z6cPd6enc/yU3KX1fywEdPGI1eYOcPqF6bXfQkFchC1DWNvk83xP5solTSpLa2yK/l5eTTXA=="],
 
     "@types/bun": ["@types/bun@1.4.0", "", { "dependencies": { "bun-types": "1.4.0" } }, "sha512-K+lZULY23vRgK/CfTjFIV+tyifaNdSMlPh9j+6mQ/cLfpOznLyAuzgV/JQysyECpkBQLVMSyvjlr2fBUSA9wFQ=="],
 

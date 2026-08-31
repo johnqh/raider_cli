@@ -1,10 +1,10 @@
-# raider_cli
+# raidr_cli
 
-Reconstruct a working web app from an **raider** capture bundle — plus the agent
+Reconstruct a working web app from an **raidr** capture bundle — plus the agent
 skill that drives the reconstruction.
 
 ```bash
-bun add -g @sudobility/raider_cli
+bun add -g @sudobility/raidr_cli
 ```
 
 Requires [Bun](https://bun.sh) ≥ 1.2. The CLI ships as TypeScript and runs
@@ -13,12 +13,12 @@ under Bun directly.
 ## Usage
 
 ```bash
-raider reconstruct <bundle.zip|dir> --out <dir>
-raider install [--claude] [--codex] [--agents] [--all]
-raider uninstall [--claude] [--codex] [--agents]
+raidr reconstruct <bundle.zip|dir> --out <dir>
+raidr install [--claude] [--codex] [--agents] [--all]
+raidr uninstall [--claude] [--codex] [--agents]
 ```
 
-`raider install` symlinks the `reconstruct` skill into the personal skills
+`raidr install` symlinks the `reconstruct` skill into the personal skills
 directory of a coding agent — `.claude/skills`, `.codex/skills`, or the shared
 `.agents/skills` path. The skill itself is runtime-agnostic: it drives a shell
 binary and reads JSON, so it works the same in Claude Code, Codex, Gemini CLI,
@@ -26,7 +26,7 @@ and Copilot CLI.
 
 ## The split: CLI does the deterministic work, the agent does the judgment
 
-`raider reconstruct` performs every stage that has a right answer — source-map
+`raidr reconstruct` performs every stage that has a right answer — source-map
 recovery, bundle unpacking, JSON Schema inference, API and route modelling,
 project scaffold, and a [Hono](https://hono.dev) replay server that serves the
 captured traffic back. Each stage writes a JSON artifact to disk.
@@ -41,22 +41,22 @@ covered by `bun test`; only genuinely model-shaped work lives in prose.
 
 ## Why this is a separate repository
 
-[`raider_lib`](https://github.com/johnqh/raider_lib) is imported by
-[`raider_extension`](https://github.com/johnqh/raider_extension), which ships into
+[`raidr_lib`](https://github.com/johnqh/raidr_lib) is imported by
+[`raidr_extension`](https://github.com/johnqh/raidr_extension), which ships into
 a Chrome MV3 bundle. Its defining constraint is that it performs no I/O — no
 filesystem, no `DOM` in its tsconfig `lib` — which is what keeps it trivially
 testable and safe to bundle for the browser.
 
 A CLI is the opposite: it needs `fs`, `path`, `process`, and zip extraction.
-Putting that in `raider_lib` would place Node-only code in the dependency graph
+Putting that in `raidr_lib` would place Node-only code in the dependency graph
 of a browser artifact and would end the mechanical enforcement of that purity.
 
 So the dependency shape is a diamond, not a chain:
 
 ```
-raider_lib              pure: bundle format, redaction, coverage, inference
-   ├── raider_extension   browser: CDP capture, offscreen buffer, side panel
-   └── raider_cli         node: unzip, filesystem, codegen + the reconstruct skill
+raidr_lib              pure: bundle format, redaction, coverage, inference
+   ├── raidr_extension   browser: CDP capture, offscreen buffer, side panel
+   └── raidr_cli         node: unzip, filesystem, codegen + the reconstruct skill
 ```
 
 The two consumers never see each other.
@@ -71,14 +71,14 @@ bun run fixtures:build      # build the sample apps
 bun run fixtures:capture    # capture them into fixtures/bundles/
 ```
 
-## The raider project
+## The raidr project
 
 | Repository | Role |
 |---|---|
-| [`raider_lib`](https://github.com/johnqh/raider_lib) | Bundle format and pure analysis |
-| [`raider_extension`](https://github.com/johnqh/raider_extension) | Chrome MV3 extension that performs the capture |
-| [`raider_cli`](https://github.com/johnqh/raider_cli) | Reconstruction CLI and the agent skill — this repo |
-| [`raider_web`](https://github.com/johnqh/raider_web) | Landing site |
+| [`raidr_lib`](https://github.com/johnqh/raidr_lib) | Bundle format and pure analysis |
+| [`raidr_extension`](https://github.com/johnqh/raidr_extension) | Chrome MV3 extension that performs the capture |
+| [`raidr_cli`](https://github.com/johnqh/raidr_cli) | Reconstruction CLI and the agent skill — this repo |
+| [`raidr_web`](https://github.com/johnqh/raidr_web) | Landing site |
 
 ## License
 

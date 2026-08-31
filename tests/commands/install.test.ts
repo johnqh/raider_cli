@@ -60,7 +60,7 @@ test('refuses to delete a real directory sitting in the way', async () => {
   const { install } = await import('../../src/commands/install');
   const fakeHome = `${import.meta.dir}/../../.tmp/install-home2`;
   await rm(fakeHome, { recursive: true, force: true });
-  const occupied = join(fakeHome, '.codex/skills/raider-reconstruct');
+  const occupied = join(fakeHome, '.codex/skills/raidr-reconstruct');
   await mkdir(occupied, { recursive: true });
   await writeFile(join(occupied, 'SKILL.md'), '# someone else’s work');
 
